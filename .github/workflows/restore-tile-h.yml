@@ -1,0 +1,42 @@
+name: Restore Tile.h
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/restore-tile-h.yml'
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Restore Tile.h and add coral
+        run: |
+          set -e
+          git checkout 8b427b72dc61f5260ae60a1c68d85632a387b668 -- Minecraft.World/Tile.h
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('Minecraft.World/Tile.h')
+          t = p.read_text()
+          if 'coral_Id' not in t:
+              t = t.replace(
+                  'static const int seaLantern_Id = 169;',
+                  'static const int seaLantern_Id = 169;\n\tstatic const int coral_Id = 211;'
+              )
+          if 'static Tile* coral' not in t and 'static Tile *coral' not in t:
+              t = t.replace(
+                  'static Tile* prismarine;',
+                  'static Tile* prismarine;\n\tstatic Tile* coral;'
+              )
+          p.write_text(t)
+          print('Tile.h restored, size', len(t))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Minecraft.World/Tile.h
+          git diff --cached --quiet || git commit -m "1.13: Restore Tile.h + coral_Id registration"
+          git push

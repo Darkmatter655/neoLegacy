@@ -378,6 +378,8 @@ public:
 	static const int prismarine_Id = 168;
 	static const int seaLantern_Id = 169;
 	static const int coral_Id = 211;
+	static const int kelp_Id = 212;
+	static const int seagrass_Id = 213;
 	static const int hayBlock_Id = 170;
 	static const int woolCarpet_Id = 171;
 	static const int clayHardened_Id = 172;
@@ -635,6 +637,8 @@ public:
 	static Tile* seaLantern;
 	static Tile* prismarine;
 	static Tile* coral;
+	static Tile* kelp;
+	static Tile* seagrass;
 
 	static TallGrass2* tallgrass2;
 	

@@ -1,4 +1,7 @@
 #include "stdafx.h"
+#include "CoralTile.h"
+#include "KelpTile.h"
+#include "SeagrassTile.h"
 #include "net.minecraft.stats.h"
 #include "net.minecraft.locale.h"
 #include "net.minecraft.world.entity.h"
@@ -256,6 +259,9 @@ Tile* Tile::red_sandstone = nullptr;
 Tile* Tile::stairs_red_sandstone = nullptr;
 Tile* Tile::seaLantern = nullptr;
 Tile* Tile::prismarine = nullptr;
+Tile* Tile::coral = nullptr;
+Tile* Tile::kelp = nullptr;
+Tile* Tile::seagrass = nullptr;
 
 
 Tile* Tile::tree2Trunk = nullptr;
@@ -540,6 +546,9 @@ void Tile::staticCtor()
 	
 	Tile::seaLantern = (new SeaLanternTile(169, Material::glass))->setBaseItemTypeAndMaterial(Item::eBaseItemType_torch, Item::eMaterial_glowstone)->setDestroyTime(0.3f)->setSoundType(Tile::SOUND_GLASS)->setLightEmission(1.0f)->setIconName(L"glowstone")->setDescriptionId(IDS_TILE_SEA_LANTERN)->setUseDescriptionId(IDS_DESC_SEA_LANTERN);
 	Tile::prismarine = (new PrismarineTile(168))->setBaseItemTypeAndMaterial(Item::eBaseItemType_structblock, Item::eMaterial_stone)->setDestroyTime(1.5f)->setExplodeable(10)->setSoundType(SOUND_STONE)->setIconName(L"prismarine")->setDescriptionId(IDS_TILE_PRISMARINE)->setUseDescriptionId(IDS_DESC_PRISMARINE);
+	Tile::coral = (new CoralTile(211))->setDestroyTime(1.5f)->setExplodeable(6)->setSoundType(SOUND_STONE)->setIconName(L"coral")->setDescriptionId(IDS_TILE_CORAL_TUBE)->setUseDescriptionId(IDS_DESC_CORAL_TUBE);
+	Tile::kelp = (new KelpTile(212))->setDescriptionId(IDS_TILE_CORAL_TUBE)->setUseDescriptionId(IDS_DESC_CORAL_TUBE);
+	Tile::seagrass = (new SeagrassTile(213))->setDescriptionId(IDS_TILE_CORAL_TUBE)->setUseDescriptionId(IDS_DESC_CORAL_TUBE);
 
 	Tile::tallgrass2 = static_cast<TallGrass2*>((new TallGrass2(175))->setDestroyTime(0.0f)->setSoundType(Tile::SOUND_GRASS)->setIconName(L"tallgrass2_tall_grass_upper")->setDescriptionId(IDS_DESC_DOUBLE_TALL_GRASS)->setUseDescriptionId(IDS_DESC_TALL_GRASS)->disableMipmap()->sendTileData(0xFF));
 
@@ -627,6 +636,7 @@ void Tile::staticCtor()
 	Tile::transculent[0] = true;
 
 	Item::items[prismarine_Id] = (new MultiTextureTileItem(Tile::prismarine_Id - 256, prismarine, (int *)PrismarineTile::PRISMARINE_NAMES, 3))->setIconName(L"prismarine")->setDescriptionId(IDS_TILE_PRISMARINE);
+	Item::items[coral_Id] = (new MultiTextureTileItem(Tile::coral_Id - 256, coral, (int *)CoralTile::CORAL_NAMES, CoralTile::TYPE_COUNT))->setIconName(L"coral")->setDescriptionId(IDS_TILE_CORAL_TUBE);
 
 	Stats::buildItemStats();
 

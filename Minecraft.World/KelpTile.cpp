@@ -67,8 +67,8 @@ void KelpTile::tick(Level *level, int x, int y, int z, Random *random)
 		int above = level->getTile(x, y + 1, z);
 		if (above == Tile::water_Id || above == Tile::calmWater_Id)
 		{
-			level->setTileAndData(x, y + 1, z, id, 0);
-			level->setData(x, y, z, data + 1);
+			level->setTileAndData(x, y + 1, z, id, 0, Tile::UPDATE_ALL);
+			level->setData(x, y, z, data + 1, Tile::UPDATE_CLIENTS);
 		}
 		else if (above == 0)
 		{

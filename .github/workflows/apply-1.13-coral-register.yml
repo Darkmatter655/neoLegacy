@@ -1,0 +1,71 @@
+name: Register Coral 1.13
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/apply-1.13-coral-register.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch Tile.cpp to register coral
+        run: |
+          set -e
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('Minecraft.World/Tile.cpp')
+          t = p.read_text()
+          changed = False
+          if '#include "CoralTile.h"' not in t:
+              # after first includes block - after stdafx
+              if '#include "stdafx.h"' in t:
+                  t = t.replace('#include "stdafx.h"', '#include "stdafx.h"\n#include "CoralTile.h"', 1)
+              else:
+                  t = '#include "CoralTile.h"\n' + t
+              changed = True
+          if 'Tile* Tile::coral' not in t and 'Tile *Tile::coral' not in t:
+              if 'Tile* Tile::prismarine = nullptr;' in t:
+                  t = t.replace('Tile* Tile::prismarine = nullptr;', 'Tile* Tile::prismarine = nullptr;\nTile* Tile::coral = nullptr;')
+                  changed = True
+              elif 'Tile *Tile::prismarine = nullptr;' in t:
+                  t = t.replace('Tile *Tile::prismarine = nullptr;', 'Tile *Tile::prismarine = nullptr;\nTile *Tile::coral = nullptr;')
+                  changed = True
+          reg = 'Tile::coral = (new CoralTile(211))->setDestroyTime(1.5f)->setExplodeable(6)->setSoundType(SOUND_STONE)->setIconName(L"coral")->setDescriptionId(IDS_TILE_CORAL_TUBE)->setUseDescriptionId(IDS_DESC_CORAL_TUBE);'
+          if 'Tile::coral =' not in t:
+              needle = 'Tile::prismarine = (new PrismarineTile(168))'
+              idx = t.find(needle)
+              if idx != -1:
+                  # insert after the full prismarine statement (ends with semicolon)
+                  end = t.find(';', idx)
+                  if end != -1:
+                      t = t[:end+1] + '\n\t' + reg + t[end+1:]
+                      changed = True
+          item = 'Item::items[coral_Id] = (new MultiTextureTileItem(Tile::coral_Id - 256, coral, (int *)CoralTile::CORAL_NAMES, CoralTile::TYPE_COUNT))->setIconName(L"coral")->setDescriptionId(IDS_TILE_CORAL_TUBE);'
+          if 'Item::items[coral_Id]' not in t:
+              needle = 'Item::items[prismarine_Id]'
+              idx = t.find(needle)
+              if idx != -1:
+                  end = t.find(';', idx)
+                  if end != -1:
+                      t = t[:end+1] + '\n\t' + item + t[end+1:]
+                      changed = True
+          if changed:
+              p.write_text(t)
+              print('Tile.cpp patched')
+          else:
+              print('No changes needed or needles missing')
+              # debug
+              print('has CoralTile include', 'CoralTile.h' in t)
+              print('has Tile::coral', 'Tile::coral' in t)
+              print('has prismarine static', 'Tile::prismarine' in t)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Minecraft.World/Tile.cpp
+          git diff --cached --quiet || git commit -m "1.13: Register coral block in Tile::staticCtor"
+          git push

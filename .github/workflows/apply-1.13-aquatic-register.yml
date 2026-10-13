@@ -1,0 +1,92 @@
+name: Register 1.13 Aquatic
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/apply-1.13-aquatic-register.yml'
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Register tiles and CMake
+        run: |
+          set -e
+          python3 <<'PY'
+          from pathlib import Path
+
+          # --- Tile.h IDs ---
+          h = Path('Minecraft.World/Tile.h')
+          t = h.read_text()
+          if 'kelp_Id' not in t:
+              t = t.replace(
+                  'static const int coral_Id = 211;',
+                  'static const int coral_Id = 211;\n\tstatic const int kelp_Id = 212;\n\tstatic const int seagrass_Id = 213;'
+              )
+          if 'static Tile* kelp' not in t and 'static Tile *kelp' not in t:
+              t = t.replace(
+                  'static Tile* coral;',
+                  'static Tile* coral;\n\tstatic Tile* kelp;\n\tstatic Tile* seagrass;'
+              )
+          h.write_text(t)
+
+          # --- Tile.cpp registration ---
+          p = Path('Minecraft.World/Tile.cpp')
+          t = p.read_text()
+          if '#include "CoralTile.h"' not in t:
+              t = t.replace('#include "stdafx.h"', '#include "stdafx.h"\n#include "CoralTile.h"\n#include "KelpTile.h"\n#include "SeagrassTile.h"', 1)
+          if 'Tile* Tile::coral' not in t:
+              t = t.replace('Tile* Tile::prismarine = nullptr;', 'Tile* Tile::prismarine = nullptr;\nTile* Tile::coral = nullptr;\nTile* Tile::kelp = nullptr;\nTile* Tile::seagrass = nullptr;')
+          if 'Tile::coral =' not in t:
+              needle = 'Tile::prismarine = (new PrismarineTile(168))'
+              idx = t.find(needle)
+              if idx != -1:
+                  end = t.find(';', idx)
+                  block = '''
+\tTile::coral = (new CoralTile(211))->setDestroyTime(1.5f)->setExplodeable(6)->setSoundType(SOUND_STONE)->setIconName(L"coral")->setDescriptionId(IDS_TILE_CORAL_TUBE)->setUseDescriptionId(IDS_DESC_CORAL_TUBE);
+\tTile::kelp = (new KelpTile(212))->setDescriptionId(IDS_TILE_CORAL_TUBE)->setUseDescriptionId(IDS_DESC_CORAL_TUBE);
+\tTile::seagrass = (new SeagrassTile(213))->setDescriptionId(IDS_TILE_CORAL_TUBE)->setUseDescriptionId(IDS_DESC_CORAL_TUBE);'''
+                  # kelp/seagrass string IDs temporary reuse until dedicated strings added
+                  t = t[:end+1] + block + t[end+1:]
+          if 'Item::items[coral_Id]' not in t:
+              needle = 'Item::items[prismarine_Id]'
+              idx = t.find(needle)
+              if idx != -1:
+                  end = t.find(';', idx)
+                  item = '''
+\tItem::items[coral_Id] = (new MultiTextureTileItem(Tile::coral_Id - 256, coral, (int *)CoralTile::CORAL_NAMES, CoralTile::TYPE_COUNT))->setIconName(L"coral")->setDescriptionId(IDS_TILE_CORAL_TUBE);'''
+                  t = t[:end+1] + item + t[end+1:]
+          p.write_text(t)
+
+          # --- CMake sources ---
+          cm = Path('Minecraft.World/cmake/sources/Common.cmake')
+          c = cm.read_text()
+          for name in ('KelpTile', 'SeagrassTile'):
+              if f'{name}.cpp' not in c:
+                  c = c.replace(
+                      '"${CMAKE_CURRENT_SOURCE_DIR}/CoralTile.cpp"',
+                      f'"${{CMAKE_CURRENT_SOURCE_DIR}}/CoralTile.cpp"\n  "${{CMAKE_CURRENT_SOURCE_DIR}}/{name}.cpp"\n  "${{CMAKE_CURRENT_SOURCE_DIR}}/{name}.h"'
+                  )
+          cm.write_text(c)
+
+          # --- Fix KelpTile setTileAndData arity ---
+          kp = Path('Minecraft.World/KelpTile.cpp')
+          kt = kp.read_text()
+          kt = kt.replace(
+              'level->setTileAndData(x, y + 1, z, id, 0);',
+              'level->setTileAndData(x, y + 1, z, id, 0, Tile::UPDATE_ALL);'
+          )
+          kt = kt.replace('level->setData(x, y, z, data + 1);', 'level->setData(x, y, z, data + 1, Tile::UPDATE_CLIENTS);')
+          kp.write_text(kt)
+
+          print('done')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "1.13: Register coral/kelp/seagrass tiles + CMake"
+          git push
